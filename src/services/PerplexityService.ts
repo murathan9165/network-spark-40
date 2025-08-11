@@ -30,43 +30,30 @@ export class PerplexityService {
   static async generateEmailAndTalkingPoints(
     prompt: string
   ): Promise<GeneratedComms | null> {
-    const apiKey = this.getKey();
-    if (!apiKey) return null;
+    try {
+      const response = await fetch('/functions/v1/perplexity-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
 
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-sonar-small-128k-online',
-        messages: [
-          { role: 'system', content: 'Be precise and concise.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        top_p: 0.9,
-        max_tokens: 900,
-        frequency_penalty: 1,
-        presence_penalty: 0,
-      }),
-    });
+      if (!response.ok) {
+        console.error('Perplexity edge error', await response.text());
+        return null;
+      }
 
-    if (!response.ok) {
-      console.error('Perplexity error', await response.text());
+      const data = await response.json();
+      const text = (data?.content as string) || '';
+      if (!text) return null;
+
+      const parts = text.split('\n\n');
+      const email = parts[0] || text;
+      const talkingPoints = parts.slice(1, 4).filter(Boolean);
+      return { email, talkingPoints };
+    } catch (error) {
+      console.error('Perplexity edge error', error);
       return null;
     }
-
-    const data = await response.json();
-    const text = data?.choices?.[0]?.message?.content as string | undefined;
-    if (!text) return null;
-
-    // Expect the model to return sections separated by markers; provide fallback parsing
-    const parts = text.split('\n\n');
-    const email = parts[0] || text;
-    const talkingPoints = parts.slice(1, 4).filter(Boolean);
-    return { email, talkingPoints };
   }
 }
 

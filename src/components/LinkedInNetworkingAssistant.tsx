@@ -86,9 +86,7 @@ export const LinkedInNetworkingAssistant = () => {
   const [talkingPoints, setTalkingPoints] = useState<string[]>([]);
 
   const saveKeys = async () => {
-    if (firecrawlKey) FirecrawlService.saveApiKey(firecrawlKey);
-    if (pplxKey) PerplexityService.saveKey(pplxKey);
-    toast({ title: 'Saved', description: 'API keys saved locally.' });
+    toast({ title: 'No longer needed', description: 'Keys are stored securely in Supabase. Local keys here are ignored.' });
   };
 
   const scrape = async (url: string) => {
@@ -104,15 +102,7 @@ export const LinkedInNetworkingAssistant = () => {
       setLoading(true);
       setProgress(10);
 
-      if (!firecrawlKey && (!studentRaw || !targetRaw)) {
-        toast({
-          title: 'Add Firecrawl key or paste profiles',
-          description: 'LinkedIn may block scraping. Pasting profile text also works.',
-          variant: 'destructive'
-        });
-        setLoading(false);
-        return;
-      }
+      // Server-side secrets are used; proceed even if local keys are empty
 
       let studentText = studentRaw;
       let targetText = targetRaw;
@@ -178,16 +168,16 @@ export const LinkedInNetworkingAssistant = () => {
 
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="firecrawl" className="text-sm">Firecrawl API Key (temporary)</label>
-              <Input id="firecrawl" placeholder="fc_live_..." value={firecrawlKey} onChange={e => setFirecrawlKey(e.target.value)} />
+              <label htmlFor="firecrawl" className="text-sm">Firecrawl API Key</label>
+              <Input id="firecrawl" placeholder="Managed via Supabase Secrets" value={firecrawlKey} onChange={e => setFirecrawlKey(e.target.value)} disabled />
             </div>
             <div className="space-y-2">
-              <label htmlFor="pplx" className="text-sm">Perplexity API Key (optional)</label>
-              <Input id="pplx" placeholder="pplx-..." value={pplxKey} onChange={e => setPplxKey(e.target.value)} />
+              <label htmlFor="pplx" className="text-sm">Perplexity API Key</label>
+              <Input id="pplx" placeholder="Managed via Supabase Secrets" value={pplxKey} onChange={e => setPplxKey(e.target.value)} disabled />
             </div>
           </div>
           <div className="flex gap-3">
-            <Button variant="subtle" onClick={saveKeys}>Save API keys</Button>
+            <Button variant="subtle" onClick={saveKeys}>Secrets managed in Supabase</Button>
             <Button variant="hero" onClick={analyze} disabled={loading}>{loading ? 'Analyzing...' : 'Analyze Profiles'}</Button>
           </div>
 

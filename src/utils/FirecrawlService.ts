@@ -1,84 +1,51 @@
-import FirecrawlApp from '@mendable/firecrawl-js';
-
-interface ErrorResponse {
-  success: false;
-  error: string;
-}
-
-interface CrawlStatusResponse {
-  success: true;
+export type CrawlResponse = {
+  success?: boolean;
   status?: string;
   completed?: number;
   total?: number;
   creditsUsed?: number;
   expiresAt?: string;
   data?: any[];
-}
-
-export type CrawlResponse = CrawlStatusResponse | ErrorResponse;
+};
 
 export class FirecrawlService {
-  private static API_KEY_STORAGE_KEY = 'firecrawl_api_key';
-  private static firecrawlApp: FirecrawlApp | null = null;
+  private static API_KEY_STORAGE_KEY = 'firecrawl_api_key'; // kept for compatibility (no longer used)
 
   static saveApiKey(apiKey: string): void {
+    // Kept for backward compatibility; keys are now stored securely in Supabase Secrets
     localStorage.setItem(this.API_KEY_STORAGE_KEY, apiKey);
-    this.firecrawlApp = new FirecrawlApp({ apiKey });
-    console.log('Firecrawl API key saved');
   }
 
   static getApiKey(): string | null {
     return localStorage.getItem(this.API_KEY_STORAGE_KEY);
   }
 
-  static async testApiKey(apiKey: string): Promise<boolean> {
-    try {
-      this.firecrawlApp = new FirecrawlApp({ apiKey });
-      const testResponse: any = await this.firecrawlApp.crawlUrl('https://example.com', {
-        limit: 1,
-      });
-      return !!testResponse?.success;
-    } catch (error) {
-      console.error('Error testing API key:', error);
-      return false;
-    }
+  static async testApiKey(_: string): Promise<boolean> {
+    // No longer used on the client; keys live in Supabase
+    return true;
   }
 
   static async crawlWebsite(url: string): Promise<{ success: boolean; error?: string; data?: any }>
   {
-    const apiKey = this.getApiKey();
-    if (!apiKey) {
-      return { success: false, error: 'API key not found' };
-    }
-
     try {
-      if (!this.firecrawlApp) {
-        this.firecrawlApp = new FirecrawlApp({ apiKey });
+      const res = await fetch('/functions/v1/firecrawl-crawl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        return { success: false, error: txt || 'Failed to crawl website' };
       }
 
-      const crawlResponse = await this.firecrawlApp.crawlUrl(url, {
-        limit: 30,
-        scrapeOptions: {
-          formats: ['markdown', 'html'],
-        },
-      }) as CrawlResponse;
-
-      if (!crawlResponse.success) {
-        return {
-          success: false,
-          error: (crawlResponse as ErrorResponse).error || 'Failed to crawl website',
-        };
-      }
-
-      return {
-        success: true,
-        data: crawlResponse,
-      };
+      const data = await res.json();
+      return { success: true, data };
     } catch (error) {
       console.error('Error during crawl:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to connect to Firecrawl API',
+        error: error instanceof Error ? error.message : 'Failed to connect to backend',
       };
     }
   }
